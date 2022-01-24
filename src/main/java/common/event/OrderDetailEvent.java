@@ -1,4 +1,4 @@
-package com.module.inventory.dto;
+package common.event;
 
 import lombok.*;
 
@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @NoArgsConstructor
 @ToString
-public class OrderDetailDto {
+public class OrderDetailEvent {
 
     private Long productId;
     private Long orderId;

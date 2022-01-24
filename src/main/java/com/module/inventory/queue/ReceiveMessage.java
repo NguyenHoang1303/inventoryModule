@@ -1,7 +1,7 @@
 package com.module.inventory.queue;
 
 
-import com.module.inventory.dto.OrderDto;
+import common.event.OrderEvent;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,9 +18,8 @@ public class ReceiveMessage {
 
 
     @RabbitListener(queues = {QUEUE_INVENTORY})
-    public void getInfoOrder(OrderDto orderDto) {
-       consumerService.handlerInventory(orderDto);
-        log.info("Module Inventory nhận thông tin order: " + orderDto);
+    public void getInfoOrder(OrderEvent orderEvent) {
+       consumerService.handlerInventory(orderEvent);
     }
 
 
