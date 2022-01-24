@@ -60,7 +60,7 @@ public class ConsumerService {
     public void handlerReturnStatus(OrderDto orderDto) {
         Set<Product> products = new HashSet<>();
         Set<ImportHistory> importHistories = new HashSet<>();
-        orderDto.getOrderDetails().forEach(odt -> {
+        for (OrderDetailDto odt: orderDto.getOrderDetails()) {
             Product product = productService.findById(odt.getProductId());
             if (product == null) {
                 orderDto.setMessage("Sản phẩm không tồn tại.");
@@ -74,8 +74,7 @@ public class ConsumerService {
             importHistories.add(new ImportHistory(product.getId(), product.getSupplierId(),
                     product.getPrice(), quantity));
             products.add(product);
-
-        });
+        }
 
         try {
             productService.saveAll(products);
