@@ -40,7 +40,6 @@ public class ConsumerService {
 
     @Transactional
     public void handlerInventory(OrderDto orderDto) {
-        log.info("1. xử lý order");
         if (!orderDto.validationInventory()) {
             orderDto.setMessage("Kiểm tra thông tin order");
             rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER_INVENTORY, orderDto);
@@ -48,13 +47,11 @@ public class ConsumerService {
         }
 
         if (orderDto.getInventoryStatus().equals(InventoryStatus.PENDING.name())) {
-            log.info("2. payment pendding");
             handlerPendingStatus(orderDto);
             return;
         }
 
         if (orderDto.getInventoryStatus().equals(InventoryStatus.RETURN.name())) {
-            log.info("3. payment return");
             handlerReturnStatus(orderDto);
         }
     }
@@ -63,7 +60,6 @@ public class ConsumerService {
     public void handlerReturnStatus(OrderDto orderDto) {
         Set<Product> products = new HashSet<>();
         Set<ImportHistory> importHistories = new HashSet<>();
-        log.info("3.1: start");
         orderDto.getOrderDetails().forEach(odt -> {
             Product product = productService.findById(odt.getProductId());
             if (product == null) {
@@ -86,7 +82,6 @@ public class ConsumerService {
             importRepository.saveAll(importHistories);
             orderDto.setInventoryStatus(InventoryStatus.RETURNED.name());
             orderDto.setMessage("Xử lý đơn hàng thành công.");
-            log.info("3.3: orderDto return thành công: " + orderDto.toString());
             rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER_INVENTORY, orderDto);
         } catch (Exception e) {
             orderDto.setInventoryStatus(InventoryStatus.PENDING.name());
@@ -100,7 +95,6 @@ public class ConsumerService {
     private void handlerPendingStatus(OrderDto orderDto) {
         Set<Product> products = new HashSet<>();
         Set<ExportHistory> exportHistorySet = new HashSet<>();
-        log.info("3.1: orderDto pending start:");
         for (OrderDetailDto odt: orderDto.getOrderDetails()) {
             Product product = productService.findById(odt.getProductId());
             if (product == null) {
@@ -115,46 +109,17 @@ public class ConsumerService {
                 orderDto.setMessage("Số lượng phẩm trong kho không đủ. ");
                 orderDto.setInventoryStatus(InventoryStatus.OUT_OF_STOCK.name());
                 rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER_INVENTORY, orderDto);
-                log.info("3.2 orderDto ko đủ hàng: " + orderDto.toString());
                 return;
             }
             product.setUnitInStock(unitInStock - quantity);
             exportHistorySet.add(new ExportHistory(orderDto.getOrderId(), product.getId(), quantity));
             products.add(product);
         }
-//        orderDto.getOrderDetails().forEach(odt -> {
-//            Product product = productService.findById(odt.getProductId());
-//            if (product == null) {
-//                orderDto.setMessage("Sản phẩm không tồn tại.");
-//                rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER_INVENTORY, orderDto);
-//                return;
-//            }
-//
-//            int quantity = odt.getQuantity();
-//            int unitInStock = product.getUnitInStock();
-//            if (quantity > unitInStock) {
-//                orderDto.setMessage("Số lượng phẩm trong kho không đủ. ");
-//                orderDto.setInventoryStatus(InventoryStatus.OUT_OF_STOCK.name());
-//                rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER_INVENTORY, orderDto);
-//                log.info("3.2 orderDto ko đủ hàng: " + orderDto.toString());
-//                checkQuantity.set(false);
-//                return;
-//            }
-//            product.setUnitInStock(unitInStock - quantity);
-//            exportHistorySet.add(new ExportHistory(orderDto.getOrderId(), product.getId(), quantity));
-//            products.add(product);
-//        });
-//        if (!checkQuantity.get()) {
-//            log.info("checkQuantity: het hang");
-//            return;
-//        }
-        log.error("loix de");
         try {
             exportRepository.saveAll(exportHistorySet);
             productService.saveAll(products);
             orderDto.setMessage("Xử lý đơn hàng thành công.");
             orderDto.setInventoryStatus(InventoryStatus.DONE.name());
-            log.info("3.3 orderDto xử lý thành công: " + orderDto.toString());
             rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER_INVENTORY, orderDto);
         } catch (Exception e) {
             orderDto.setInventoryStatus(InventoryStatus.RETURN.name());

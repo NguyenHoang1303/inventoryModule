@@ -2,6 +2,7 @@ package com.module.inventory.queue;
 
 
 import com.module.inventory.dto.OrderDto;
+import lombok.extern.log4j.Log4j2;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
 import static com.module.inventory.queue.Config.*;
 
 @Component
+@Log4j2
 public class ReceiveMessage {
 
     @Autowired
@@ -18,7 +20,7 @@ public class ReceiveMessage {
     @RabbitListener(queues = {QUEUE_INVENTORY})
     public void getInfoOrder(OrderDto orderDto) {
        consumerService.handlerInventory(orderDto);
-        System.out.println("Module Inventory nhận thông tin order: " + orderDto);
+        log.info("Module Inventory nhận thông tin order: " + orderDto);
     }
 
 
