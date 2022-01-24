@@ -1,5 +1,6 @@
 package com.module.inventory.queue;
 
+import com.module.inventory.translate.TranslationService;
 import common.event.OrderDetailEvent;
 import common.event.OrderEvent;
 import com.module.inventory.entity.ExportHistory;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.Set;
 
+import static com.module.inventory.constant.KeyI18n.*;
 import static com.module.inventory.queue.Config.*;
 
 @Service
@@ -36,12 +38,15 @@ public class ConsumerService {
     @Autowired
     RabbitTemplate rabbitTemplate;
 
+    @Autowired
+    TranslationService translationService;
+
 
     @Transactional
     public void handlerInventory(OrderEvent orderEvent) {
         orderEvent.setQueueName(QUEUE_INVENTORY);
         if (!orderEvent.validationInventory()) {
-            orderEvent.setMessage("Kiểm tra thông tin order");
+            orderEvent.setMessage(translationService.translate(CHECK_INFO_INVENTORY));
             rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER, orderEvent);
             return;
         }
@@ -73,7 +78,7 @@ public class ConsumerService {
             productService.saveAll(products);
             importRepository.saveAll(importHistories);
             orderEvent.setInventoryStatus(InventoryStatus.RETURNED.name());
-            orderEvent.setMessage("Xử lý đơn hàng thành công.");
+            orderEvent.setMessage(translationService.translate(SUCCESS));
             rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER, orderEvent);
         } catch (Exception e) {
             orderEvent.setInventoryStatus(InventoryStatus.PENDING.name());
@@ -93,7 +98,7 @@ public class ConsumerService {
             int quantity = odt.getQuantity();
             int unitInStock = product.getUnitInStock();
             if (quantity > unitInStock) {
-                orderEvent.setMessage("Số lượng phẩm trong kho không đủ. ");
+                orderEvent.setMessage(translationService.translate(NOT_ENOUGH_QUANTITY));
                 orderEvent.setInventoryStatus(InventoryStatus.OUT_OF_STOCK.name());
                 rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER, orderEvent);
                 return;
@@ -106,7 +111,7 @@ public class ConsumerService {
         try {
             exportRepository.saveAll(exportHistorySet);
             productService.saveAll(products);
-            orderEvent.setMessage("Xử lý đơn hàng thành công.");
+            orderEvent.setMessage(translationService.translate(SUCCESS));
             orderEvent.setInventoryStatus(InventoryStatus.DONE.name());
             rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER, orderEvent);
         } catch (Exception e) {
@@ -122,7 +127,7 @@ public class ConsumerService {
         if (product != null) {
             return product;
         }
-        orderEvent.setMessage("Sản phẩm không tồn tại.");
+        orderEvent.setMessage(translationService.translate(PRODUCT_NOTFOUND));
         rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER, orderEvent);
         return null;
     }
