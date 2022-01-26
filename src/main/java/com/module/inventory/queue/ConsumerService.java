@@ -11,6 +11,8 @@ import com.module.inventory.repository.ExportRepository;
 import com.module.inventory.repository.ImportRepository;
 import com.module.inventory.service.ProductService;
 import lombok.extern.log4j.Log4j2;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -43,7 +45,7 @@ public class ConsumerService {
 
 
     @Transactional
-    public void handlerInventory(OrderEvent orderEvent) {
+    public void handlerInventory(@NotNull OrderEvent orderEvent) {
         orderEvent.setQueueName(QUEUE_INVENTORY);
         if (!orderEvent.validationInventory()) {
             orderEvent.setMessage(translationService.translate(CHECK_INFO_INVENTORY));
@@ -60,7 +62,7 @@ public class ConsumerService {
     }
 
     @Transactional
-    public void handlerReturnStatus(OrderEvent orderEvent) {
+    public void handlerReturnStatus(@NotNull OrderEvent orderEvent) {
         Set<Product> products = new HashSet<>();
         Set<ImportHistory> importHistories = new HashSet<>();
         for (OrderDetailEvent odt : orderEvent.getOrderDetailEvents()) {
@@ -69,8 +71,7 @@ public class ConsumerService {
             int quantity = odt.getQuantity();
             int unitInStock = product.getUnitInStock();
             product.setUnitInStock(unitInStock + quantity);
-            importHistories.add(new ImportHistory(product.getId(), product.getSupplierId(),
-                    product.getPrice(), quantity));
+            importHistories.add(new ImportHistory(odt, orderEvent.getOrderId()));
             products.add(product);
         }
 
@@ -78,7 +79,7 @@ public class ConsumerService {
             productService.saveAll(products);
             importRepository.saveAll(importHistories);
             orderEvent.setInventoryStatus(InventoryStatus.RETURNED.name());
-            orderEvent.setMessage(translationService.translate(SUCCESS));
+            orderEvent.setMessage(translationService.translate(SUCCESS_RETURN));
             rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER, orderEvent);
         } catch (Exception e) {
             orderEvent.setInventoryStatus(InventoryStatus.PENDING.name());
@@ -89,7 +90,7 @@ public class ConsumerService {
 
     }
 
-    private void handlerPendingStatus(OrderEvent orderEvent) {
+    private void handlerPendingStatus(@NotNull OrderEvent orderEvent) {
         Set<Product> products = new HashSet<>();
         Set<ExportHistory> exportHistorySet = new HashSet<>();
         for (OrderDetailEvent odt : orderEvent.getOrderDetailEvents()) {
@@ -104,14 +105,14 @@ public class ConsumerService {
                 return;
             }
             product.setUnitInStock(unitInStock - quantity);
-            exportHistorySet.add(new ExportHistory(orderEvent.getOrderId(), product.getId(), quantity));
+            exportHistorySet.add(new ExportHistory(odt, orderEvent.getOrderId()));
             products.add(product);
         }
 
         try {
             exportRepository.saveAll(exportHistorySet);
             productService.saveAll(products);
-            orderEvent.setMessage(translationService.translate(SUCCESS));
+            orderEvent.setMessage(translationService.translate(SUCCESS_DONE));
             orderEvent.setInventoryStatus(InventoryStatus.DONE.name());
             rabbitTemplate.convertAndSend(DIRECT_EXCHANGE, DIRECT_ROUTING_KEY_ORDER, orderEvent);
         } catch (Exception e) {
@@ -122,7 +123,7 @@ public class ConsumerService {
 
     }
 
-    private Product handlerProductNotExist(Long id, OrderEvent orderEvent) {
+    private @Nullable Product handlerProductNotExist(Long id, OrderEvent orderEvent) {
         Product product = productService.findById(id);
         if (product != null) {
             return product;

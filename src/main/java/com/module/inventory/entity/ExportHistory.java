@@ -1,10 +1,12 @@
 package com.module.inventory.entity;
 
 
+import common.event.OrderDetailEvent;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jetbrains.annotations.NotNull;
 
 
 import javax.persistence.*;
@@ -28,10 +30,10 @@ public class ExportHistory {
     private Long productId;
     private LocalDate createdAt;
 
-    public ExportHistory(Long orderId, Long productId, int quantity) {
+    public ExportHistory(@NotNull OrderDetailEvent orderDetail, Long orderId) {
         this.orderId = orderId;
-        this.quantity = quantity;
-        this.productId = productId;
+        this.quantity = orderDetail.getQuantity();
+        this.productId = orderDetail.getProductId();
         this.createdAt = LocalDate.now();
     }
 }

@@ -21,8 +21,7 @@ public class ProductController {
 
     @RequestMapping(method = RequestMethod.GET)
     public ResponseEntity getAll(@RequestParam(name = "page", defaultValue = "1") int page,
-                                 @RequestParam(name = "pageSize", defaultValue = "9") int pageSize
-    ) {
+                                 @RequestParam(name = "pageSize", defaultValue = "9") int pageSize) {
         Page paging = productService.getAll(page, pageSize);
         return new ResponseEntity<>(new RESTResponse.Success()
                 .setPagination(new RESTPagination(paging.getNumber() + 1, paging.getSize(), paging.getTotalElements()))
